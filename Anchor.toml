@@ -2,14 +2,14 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+vault = "BPb2s6m2AnbwWAek1HGHuu7B1viRmDhQFpedDwaniyAT"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "/Users/ongrid/.config/solana/id.json"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

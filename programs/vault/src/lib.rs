@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, Mint, MintTo, mint_to, TokenAccount, transfer, Transfer};
 use anchor_spl::associated_token::{AssociatedToken};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("BPb2s6m2AnbwWAek1HGHuu7B1viRmDhQFpedDwaniyAT");
 
 #[program]
 pub mod vault {
@@ -25,12 +25,6 @@ pub mod vault {
     }
     
     pub fn initialize_account(ctx: Context<InitializeAccount>) -> Result<()> {
-        let vault_admin = &ctx.accounts.vault_admin;
-        let current_time = get_time();
-        let key = ctx.accounts.authority.key;
-        require!(current_time >= vault_admin.created_at, VaultErrors::VaultNotInitialized);
-        require!(current_time >= vault_admin.mint_created_at, VaultErrors::MintNotInitialized);
-        require!(*key == vault_admin.admin, VaultErrors::NotAdmin);
         Ok(())
     }
 
@@ -45,6 +39,11 @@ pub mod vault {
     }
 
     pub fn deposit_tokens(ctx: Context<DepositTokens>, amount: u64) -> Result<()> {
+        let result = transfer(ctx.accounts.build_context(), amount);
+        require!(result.is_ok(), VaultErrors::DepositFailed);
+        let deposit_cell = &mut ctx.accounts.deposit_cell;
+        deposit_cell.deposit_at = get_time();
+        deposit_cell.amount += amount;
         Ok(())
     }
 
@@ -92,10 +91,7 @@ pub struct InitializeAccount<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    #[account(mut)]
     pub mint: Account<'info, Mint>,
-
-    pub vault_admin: Account<'info, VaultAdmin>,
 
     #[account(init, payer = authority, associated_token::mint = mint, associated_token::authority = authority)]
     pub token_account: Account<'info, TokenAccount>,
@@ -142,6 +138,9 @@ pub struct DepositTokens<'info> {
     #[account(mut)] //TODO: attempt to remove mut
     pub mint: Account<'info, Mint>,
 
+    #[account(init, payer = authority, space = 8 + 8 + 8)]
+    pub deposit_cell: Account<'info, DepositCell>,
+
     #[account(mut)]
     pub user_account: Account<'info, TokenAccount>,
 
@@ -149,6 +148,7 @@ pub struct DepositTokens<'info> {
     pub vault_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> DepositTokens<'info> {
@@ -163,9 +163,16 @@ impl<'info> DepositTokens<'info> {
     }
 }
 
+#[account]
+pub struct DepositCell {
+    pub amount: u64,
+    pub deposit_at: i64,
+}
+
 #[error_code]
 pub enum VaultErrors {
     NotAdmin,
     VaultNotInitialized,
     MintNotInitialized,
+    DepositFailed,
 }
